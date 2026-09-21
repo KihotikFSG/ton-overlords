@@ -1,111 +1,13 @@
-html<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TON Overlords: Ultimate Sandbox</title>
-    <script src="https://unpkg.com"></script>
-    <script src="https://telegram.org"></script>
-    <style>
-        :root { --bg-color: #05060a; --panel-color: rgba(18, 20, 32, 0.85); --gold: #ffdf00; --crystal: #00f2fe; --iron: #a8b2bd; --war: #ff3366; }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg-color); color: white; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; user-select: none; }
-        #ton-connect-btn { position: absolute; top: 12px; right: 12px; z-index: 1000; }
-        .resources-panel { display: flex; justify-content: space-around; background: var(--panel-color); backdrop-filter: blur(15px); padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-top: 55px; }
-        .res-item { display: flex; align-items: center; gap: 6px; font-weight: bold; font-size: 14px; }
-        .screen { display: none; flex: 1; flex-direction: column; align-items: center; padding: 15px; overflow-y: auto; box-sizing: border-box; }
-        .screen.active { display: flex; }
-        .drill-btn { width: 140px; height: 140px; border-radius: 50%; background: #121422; border: 4px solid var(--crystal); box-shadow: 0 0 25px rgba(0,242,254,0.2); cursor: pointer; font-size: 45px; display: flex; align-items: center; justify-content: center; outline: none; margin: 25px 0; transition: transform 0.05s; }
-        .drill-btn:active { transform: scale(0.93); }
-        .map-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 360px; }
-        .building-card { background: var(--panel-color); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 10px; text-align: center; }
-        .upgrade-btn, .btn-attack { width: 100%; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); border: none; color: black; padding: 8px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 5px; box-sizing: border-box; }
-        .btn-attack { background: linear-gradient(135deg, #ff3366 0%, #ff6b6b 100%); color: white; text-transform: uppercase; }
-        .nav-bar { background: #0a0b12; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; color: #5f6377; font-size: 10px; cursor: pointer; flex: 1; }
-        .nav-item.active { color: var(--crystal); }
-        .chat-tab-btn { flex: 1; background: transparent; border: none; border-radius: 6px; padding: 5px; color: #5f6377; font-size: 10px; font-weight: bold; cursor: pointer; }
-        .shake-effect { animation: shake 0.1s infinite; }
-        @keyframes shake { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-2px, 1px); } 40% { transform: translate(1px, -2px); } 60% { transform: translate(-1px, 2px); } 80% { transform: translate(2px, -1px); } }
-    </style>
+    <title>TON Overlords</title>
 </head>
 <body>
-
-    <div id="ton-connect-btn"></div>
-
-    <!-- ТЕКСТОВОЕ ВСТУПИТЕЛЬНОЕ ИНТРО ЛЕГЕНДЫ -->
-    <div id="game-intro-screen" style="position: fixed; top:0; left:0; width:100%; height:100%; background:#050608; z-index:100000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; box-sizing:border-box; text-align:center;">
-        <div id="intro-text-container" style="color:#e0e6ed; font-size:14px; line-height:1.7; max-width:320px; font-family:monospace; min-height:150px;"></div>
-        <button id="btn-skip-intro" style="display:none;" class="upgrade-btn" onclick="closeIntroAndProceed()">Принять вызов ⚔️</button>
-    </div>
-
-    <!-- ОВЕРЛЕЙ ВЫБОРА РАСЫ С АВАТАРКАМИ -->
-    <div id="race-selection-screen" style="position: fixed; top:0; left:0; width:100%; height:100%; background:#07080c; z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
-        <h2 style="margin-bottom:20px;">Выберите Расу</h2>
-        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; width:100%; max-width:360px;">
-            <button onclick="selectRace('human')" style="background:#1c1a0e; border:1px solid #ffd700; color:white; padding:12px; border-radius:12px; font-weight:bold;">👑 Люди</button>
-            <button onclick="selectRace('elf')" style="background:#0b191c; border:1px solid #00f2fe; color:white; padding:12px; border-radius:12px; font-weight:bold;">🧝 Эльфы</button>
-            <button onclick="selectRace('orc')" style="background:#1c0e12; border:1px solid #ff3366; color:white; padding:12px; border-radius:12px; font-weight:bold;">🧌 Орки</button>
-            <button onclick="selectRace('dwarf')" style="background:#1c1512; border:1px solid #cd7f32; color:white; padding:12px; border-radius:12px; font-weight:bold;">🧔 Гномы</button>
-        </div>
-    </div>
-
-    <!-- ВЕРХНЯЯ ПАНЕЛЬ РЕСУРСОВ -->
-    <div class="resources-panel">
-        <div class="res-item" style="color:var(--gold);">🪙 <span id="res-gold">0</span></div>
-        <div class="res-item" style="color:var(--crystal);">💎 <span id="res-crystal">0</span></div>
-        <div class="res-item" style="color:var(--iron);">⚙️ <span id="res-iron">0</span></div>
-    </div>
-
-    <!-- ПОЛОСА УРОВНЯ АККАУНТА -->
-    <div style="width:90%; max-width:360px; margin: 10px auto 0 auto; background:var(--panel-color); padding:8px; border-radius:10px; display:flex; align-items:center; gap:10px; box-sizing:border-box;">
-        <div style="background:linear-gradient(135deg, #ff007a, #7928ca); width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px;" id="player-level-badge">1</div>
-        <div style="flex:1;">
-            <div style="display:flex; justify-content:space-between; font-size:10px; color:#a8b2bd; margin-bottom:2px;"><span id="xp-text">0 / 100 XP</span></div>
-            <div style="width:100%; height:4px; background:#0d0e15; border-radius:2px; overflow:hidden;"><div id="xp-progress-bar" style="width:0%; height:100%; background:#ff007a;"></div></div>
-        </div>
-    </div>
-
-    <!-- ЭКРАН 1: ДОБЫЧА -->
-    <div class="screen active" id="screen-mine">
-        <button class="drill-btn" id="drill-trigger">🌋</button>
-        <div style="width:100%; max-width:320px; background:var(--panel-color); padding:10px; border-radius:10px; text-align:center;">
-            <div style="font-size:11px; color:#a8b2bd; display:flex; justify-content:space-between; margin-bottom:4px;"><span>Склад (Макс 3ч)</span><span id="storage-timer">0%</span></div>
-            <div style="width:100%; height:6px; background:#0d0e15; border-radius:3px; overflow:hidden; margin-bottom:8px;"><div id="storage-bar" style="width:0%; height:100%; background:var(--crystal);"></div></div>
-            <button class="upgrade-btn" style="background:#24273e; color:white; margin:0;" onclick="claimStorageResources()">Собрать на Склад</button>
-        </div>
-    </div>
-
-    <!-- ЭКРАН 2: КАРТА И ВИЗУАЛЬНЫЕ АПГРЕЙДЫ -->
-    <div class="screen" id="screen-map">
-        <div class="map-grid">
-            <div class="building-card">
-                <div id="gold-mine-visual" style="font-size:28px; margin-bottom:4px;">🪵</div>
-                <div style="font-size:12px; font-weight:bold;">Шахта Золота</div>
-                <button class="upgrade-btn" onclick="upgradeBuilding('gold')">Апгрейд</button>
-            </div>
-            <div class="building-card">
-                <div id="iron-mine-visual" style="font-size:28px; margin-bottom:4px;">❌</div>
-                <div style="font-size:12px; font-weight:bold;">Завод Железа</div>
-                <button class="upgrade-btn" onclick="upgradeBuilding('iron')">Построить</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ЭКРАН 3: ИНТЕРАКТИВНОЕ 2D-ПОДЗЕМЕЛЬЕ PVE -->
-    <div class="screen" id="screen-battle">
-        <canvas id="dungeonCanvas" width="300" height="180" style="background:#0c0d14; border-radius:10px; display:block; margin-bottom:10px;"></canvas>
-        <div id="npc-dialogue-box" style="background:rgba(255,255,255,0.02); padding:8px; border-radius:6px; font-size:11px; font-family:monospace; width:100%; max-width:300px; margin-bottom:10px;">📜 Двигайтесь по стрелкам, ищите NPC и бейте мобов [🎯].</div>
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px; width:120px;">
-            <div></div><button onclick="moveHero(0,-20)" style="background:#1e2032; border:none; color:white; padding:8px; border-radius:6px;">▲</button><div></div>
-            <button onclick="moveHero(-20,0)" style="background:#1e2032; border:none; color:white; padding:8px; border-radius:6px;">◀</button>
-            <button onclick="interactAction()" style="background:#2ecc71; border:none; color:black; padding:8px; border-radius:6px; font-weight:bold;">🎯</button>
-            <button onclick="moveHero(20,0)" style="background:#1e2032; border:none; color:white; padding:8px; border-radius:6px;">▶</button>
-            <div></div><button onclick="moveHero(0,20)" style="background:#1e2032; border:none; color:white; padding:8px; border-radius:6px;">▼</button><div></div>
-        </div>
-    </div>
-
-    <!-- ЭКРАН 4: ГЛОБАЛЬНЫЙ МИР (ОТКРЫТЫЙ ММО-БИОМ НА CANVAS С БИОМАМИ) -->
-    <div class="screen" id="screen-hub">
-        <canvas id="hubCanvas" width="320" height="200" style="background:#090a10; border-radius:12px; border:1px solid #ff007a; margin-bottom:10px;"></canvas>
-        <div style="display:flex; gap:6px; width:100%; max-width:320px; margin-bottom:6px;">
-Используйте код с осторожностью.💃 Танец⚔️ Дуэль▲◀▶▼🌍 Мир🛡️ Клан👤 ИИ🛒 Рынок▶🌋Добыча🗺️Карта⚔️Катакомбы🍻Таверна⚔️ШТУРМ РУДНИКА...// СЮДА ВСТАВЬТЕ СВОЮ АКТУАЛЬНУЮ ССЫЛКУ NGROKconst API_URL = " https://remake-nuptials-judo.ngrok-free.dev";const tg = window.Telegram?.WebApp;const tgUser = tg?.initDataUnsafe?.user || { id: 777, username: "kihotik" };let resources = { gold: 100, crystal: 20, iron: 0 };let production = { gold: 1, crystal: 0, iron: 0 };let levels = { gold: 1, iron: 0, ton: 0 };let costs = { gold: 50, iron: 100 };let playerLevel = 1, playerXp = 0, xpNeeded = 100, armyPower = 0;let playerRace = null, currentChatChannel = 'world', secondsSinceLastClaim = 0;let chatHistory = { world: [], alliance: [], private: [], market: [] };let ws, hubWs, myHubCoords = { x: 700, y: 600 }, remotePlayers = [];const sounds = { click: new Audio("google.com"), upgrade: new Audio("google.com"), victory: new Audio("google.com") };Object.values(sounds).forEach(s => s.volume = 0.2);function triggerHaptic(type) { if(tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred(type); }const legendStory = ["« В начале времен, когда сеть TON была лишь чистой неоновой энергией, праотцы сокрыли в недрах шести биомов Священные Кристаллы... »","« Ера пассивного покоя завершена. Кланы собирают ресурсы, древние подземелья проснулись, а Таверна Столицы наполнилась звоном клинков фракций. »","« Выберите свою расу и постройте величайшую ММО-империю Web3... »"];let curPara = 0, charIdx = 0;function startTypewriter() {let container = document.getElementById('intro-text-container');if(!container) return;if(curPara >= legendStory.length) { document.getElementById('btn-skip-intro').style.display='block'; return; }let curLine = legendStory[curPara];container.innerHTML = ""; charIdx = 0;function type() {if(charIdx < curLine.length) { container.innerHTML += curLine.charAt(charIdx); charIdx++; setTimeout(type, 30); }else { curPara++; setTimeout(startTypewriter, 2000); }}type();}function closeIntroAndProceed() {triggerHaptic('heavy'); sounds.victory.play();document.getElementById('game-intro-screen').style.display = 'none';document.getElementById('race-selection-screen').style.display = 'flex';}async function selectRace(raceKey) {playerRace = raceKey;await fetch(${API_URL}/api/choose_race, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user_id:tgUser.id, race:raceKey}) });document.getElementById('race-selection-screen').style.display = 'none';loadGameProgress(); initSockets();}async function loadGameProgress() {try {let r = await fetch(${API_URL}/api/get_profile/${tgUser.id});let d = await r.json();if(!d.race) { document.getElementById('game-intro-screen').style.display='flex'; startTypewriter(); return; }document.getElementById('game-intro-screen').style.display='none';playerRace = d.race; resources.gold = d.gold; resources.crystal = d.crystal; resources.iron = d.iron;production.gold = d.prod_gold; production.crystal = d.prod_crystal; production.iron = d.prod_iron;playerLevel = d.level; playerXp = d.xp; armyPower = d.army_power; updateUI();} catch(e) { document.getElementById('game-intro-screen').style.display='none'; }}function updateUI() {document.getElementById('res-gold').innerText = Math.floor(resources.gold);document.getElementById('res-crystal').innerText = Math.floor(resources.crystal);document.getElementById('res-iron').innerText = Math.floor(resources.iron);document.getElementById('player-level-badge').innerText = playerLevel;document.getElementById('xp-text').innerText = ${playerXp} / ${(playerLevel**2)*100} XP;document.getElementById('xp-progress-bar').style.width = ${(playerXp/((playerLevel**2)*100))*100}%;document.getElementById('gold-mine-visual').innerText = production.gold > 5 ? "🏭" : "🪵";document.getElementById('iron-mine-visual').innerText = production.iron > 0 ? "🏭" : "❌";}document.getElementById('drill-trigger').addEventListener('click', () => {resources.crystal += 1; playerXp += 2; sounds.click.currentTime=0; sounds.click.play(); triggerHaptic('light');if(playerXp >= (playerLevel**2)*100) { playerXp=0; playerLevel++; sounds.victory.play(); alert("✨ LEVEL UP! ✨"); }updateUI();});function switchScreen(id, el) {document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));document.getElementById(screen-${id}).classList.add('active');el.classList.add('active'); triggerHaptic('light');if(id === 'battle') setTimeout(drawDungeon, 100);if(id === 'hub') setTimeout(drawHub, 100);}function upgradeBuilding(type) {if(type === 'gold' && resources.crystal >= costs.gold) { resources.crystal -= costs.gold; production.gold += 2; costs.gold = Math.floor(costs.gold1.5); sounds.upgrade.play(); }else if(type==='iron' && resources.gold >= costs.iron) { resources.gold -= costs.iron; production.iron += 1; costs.iron = Math.floor(costs.iron1.6); sounds.upgrade.play(); }else { alert("Недостаточно ресурсов!"); }updateUI();}const hubCanvas = document.getElementById('hubCanvas'), hubCtx = hubCanvas?.getContext('2d');function drawHub() {if(!hubCtx) return; hubCtx.clearRect(0,0,320,200);let camX = Math.max(0, Math.min(1200 - 320, myHubCoords.x - 160));let camY = Math.max(0, Math.min(1200 - 200, myHubCoords.y - 100));for(let x=0; x<1200; x+=40) {for(let y=0; y<1200; y+=40) {if(x < camX-40 || x > camX+320 || y < camY-40 || y > camY+200) continue;hubCtx.fillStyle = y < 400 ? (x < 400 ? "#1a1c24" : "#0d1f14") : (y < 800 ? "#112217" : "#2d281a");hubCtx.fillRect(x - camX, y - camY, 40, 40);}}remotePlayers.forEach(p => {let isMe = p.user_id === tgUser.id;let scrX = (isMe ? myHubCoords.x : p.x) - camX;let scrY = (isMe ? myHubCoords.y : p.y) - camY;let bob = (p.action === "dancing") ? Math.sin(Date.now()/120)*4 : 0;hubCtx.fillStyle = p.action === "dancing" ? hsl(${(Date.now()/10)%360},100%,60%) : "#00f2fe";hubCtx.fillRect(scrX, scrY + bob, 12, 12);hubCtx.fillStyle = "#fff"; hubCtx.font = "8px sans-serif";hubCtx.fillText(@${p.username}, scrX - 10, scrY - 4 + bob);});}function moveInHub(dx, dy) {if(myHubCoords.x + dx >= 0 && myHubCoords.x + dx <= 1200) myHubCoords.x += dx;if(myHubCoords.y + dy >= 0 && myHubCoords.y + dy <= 1200) myHubCoords.y += dy;triggerHaptic('light'); drawHub();if(hubWs && hubWs.readyState === WebSocket.OPEN) {hubWs.send(JSON.stringify({ type:"move", user_id:tgUser.id, x:myHubCoords.x, y:myHubCoords.y }));}}function startDancingAction() {if(hubWs && hubWs.readyState === WebSocket.OPEN) {hubWs.send(JSON.stringify({ type:"dance", user_id:tgUser.id }));}}function challengeNearestPlayer() { triggerHaptic('heavy'); attackMine(); }const dCanvas = document.getElementById('dungeonCanvas'), dCtx = dCanvas?.getContext('2d');let hero = { x:20, y:20 }, mob = { x:180, y:60, alive:true };function drawDungeon() {if(!dCtx) return; dCtx.clearRect(0,0,300,180);dCtx.fillStyle = "var(--crystal)"; dCtx.fillRect(hero.x, hero.y, 14, 14);if(mob.alive) { dCtx.fillStyle = "var(--war)"; dCtx.fillRect(mob.x, mob.y, 14, 14); }}function moveHero(dx, dy) {if(hero.x+dx >= 0 && hero.x+dx <= 280) hero.x += dx;if(hero.y+dy >= 0 && hero.y+dy <= 160) hero.y += dy;triggerHaptic('light'); drawDungeon();}function interactAction() {if(mob.alive && Math.abs(hero.x - mob.x) < 20 && Math.abs(hero.y - mob.y) < 20) {mob.alive = false; resources.gold += 300; sounds.victory.play();document.getElementById('npc-dialogue-box').innerHTML = "🎉 Победа! Моб повержен, зачищено +300 🪙 Золота! Лог отправлен на сервер.";fetch(${API_URL}/api/player/add_xp, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user_id:tgUser.id, xp_amount:50})});updateUI(); drawDungeon();}}function attackMine() {const overlay = document.getElementById('battle-animation-overlay');const bar = document.getElementById('battle-progress-bar');overlay.style.display = 'flex'; document.body.classList.add('shake-effect');let p = 0;let iv = setInterval(() => {p += 5; bar.style.width = ${p}%;if(p % 10 === 0) { sounds.click.currentTime=0; sounds.click.play(); triggerHaptic('medium'); }if(p >= 100) {clearInterval(iv); document.body.classList.remove('shake-effect'); overlay.style.display = 'none';resources.crystal += 500; sounds.victory.play(); triggerHaptic('heavy');alert("🔥 ПОБЕДА НАД ГАРНИЗОНОМ! 🔥\n\nВы успешно разбили врага и зачистили +500 💎 Кристаллов!");updateUI();}}, 150);}function changeChatChannel(ch, btn) {currentChatChannel = ch; document.querySelectorAll('.chat-tab-btn').forEach(b => { b.style.background='transparent'; b.style.color='#5f6377'; });btn.style.background = 'var(--crystal)'; btn.style.color = 'black';renderChat();}function renderChat() {let box = document.getElementById('chat-box'); box.innerHTML = '';if(!chatHistory[currentChatChannel]) return;chatHistory[currentChatChannel].forEach(m => {box.innerHTML += <div><span style="color:var(--crystal); font-weight:bold;">@${m.sender}:</span> ${m.text}</div>;});box.scrollTop = box.scrollHeight;}async function sendChatMessage() {let input = document.getElementById('chat-input'); let t = input.value.trim(); if(!t) return;if(currentChatChannel === 'private') {chatHistory.private.push({ sender:tgUser.username, text:t }); renderChat(); input.value = '';let r = await fetch(${API_URL}/api/ai/chat?user_id=${tgUser.id}&user_message=${encodeURIComponent(t)}, {method:"POST"});let d = await r.json(); chatHistory.private.push({ sender:d.sender, text:d.text }); renderChat();return;}if(ws && ws.readyState === WebSocket.OPEN) {ws.send(JSON.stringify({ channel:currentChatChannel, text:t })); input.value = '';}}function initSockets() {let wsUrl = API_URL.replace("https://", "wss://").replace("http://", "ws://");ws = new WebSocket(${wsUrl}/ws/chat);ws.onopen = () => ws.send(JSON.stringify({ user_id:tgUser.id, username:tgUser.username }));ws.onmessage = (e) => { let p = JSON.parse(e.data); if(chatHistory[p.channel]) { chatHistory[p.channel].push(p); if(currentChatChannel===p.channel) renderChat(); } };hubWs = new WebSocket(${wsUrl}/ws/mmo_hub);hubWs.onopen = () => hubWs.send(JSON.stringify({ type:"init", user_id:tgUser.id, username:tgUser.username, race:playerRace }));hubWs.onmessage = (e) => { let p = JSON.parse(e.data); if(p.type==='sync') { remotePlayers = p.players; drawHub(); } };}function claimStorageResources() { secondsSinceLastClaim=0; resources.gold+=250; sounds.upgrade.play(); updateUI(); }setInterval(() => { if(secondsSinceLastClaim < 100) { secondsSinceLastClaim += 5; document.getElementById('storage-bar').style.width = ${secondsSinceLastClaim}%; document.getElementById('storage-timer').innerText = ${secondsSinceLastClaim}%; } }, 1000);loadGameProgress();if(playerRace) initSockets();
+    <script>
+        const API_URL = "https://ngrok-free.dev";
+        alert("Проверка связи! Сервер: " + API_URL);
+    </script>
+</body>
+</html>
