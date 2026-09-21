@@ -33,7 +33,7 @@
         <button id="btn-skip-intro" style="display:none;" class="upgrade-btn" onclick="closeIntroAndProceed()">Принять вызов ⚔️</button>
     </div>
 
-    <!-- ОВЕРЛЕЙ ВЫБОРА РАСЫ С АВАТАРКАМИ -->
+    <!-- ОВЕРЛЕЙ ВЫБОРА РАСЫ -->
     <div id="race-selection-screen" style="position: fixed; top:0; left:0; width:100%; height:100%; background:#07080c; z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
         <h2 style="margin-bottom:20px;">Выберите Расу</h2>
         <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; width:100%; max-width:360px;">
@@ -53,7 +53,7 @@
         <div class="res-item" style="color:var(--iron);">⚙️ <span id="res-iron">0</span></div>
     </div>
 
-    <!-- ПОЛОСА УРОВНЯ АККАУНТА -->
+    <!-- ПОЛОСА УРОВНЯ -->
     <div style="width:90%; max-width:360px; margin: 10px auto 0 auto; background:var(--panel-color); padding:8px; border-radius:10px; display:flex; align-items:center; gap:10px; box-sizing:border-box;">
         <div style="background:linear-gradient(135deg, #ff007a, #7928ca); width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px;" id="player-level-badge">1</div>
         <div style="flex:1;">
@@ -72,7 +72,7 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 2: КАРТА И ВИЗУАЛЬНЫЕ АПГРЕЙДЫ -->
+    <!-- ЭКРАН 2: КАРТА -->
     <div class="screen" id="screen-map">
         <div class="map-grid">
             <div class="building-card">
@@ -88,7 +88,7 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 3: ИНТЕРАКТИВНОЕ 2D-ПОДЗЕМЕЛЬЕ PVE -->
+    <!-- ЭКРАН 3: ПОДЗЕМЕЛЬЕ -->
     <div class="screen" id="screen-battle">
         <canvas id="dungeonCanvas" width="300" height="180" style="background:#0c0d14; border-radius:10px; display:block; margin-bottom:10px;"></canvas>
         <div id="npc-dialogue-box" style="background:rgba(255,255,255,0.02); padding:8px; border-radius:6px; font-size:11px; font-family:monospace; width:100%; max-width:300px; margin-bottom:10px;">📜 Двигайтесь по стрелкам, ищите NPC и бейте мобов [🎯].</div>
@@ -101,182 +101,8 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 4: ГЛОБАЛЬНЫЙ МИР (ОТКРЫТЫЙ ММО-БИОМ НА CANVAS) -->
+    <!-- ЭКРАН 4: ТАВЕРНА -->
     <div class="screen" id="screen-hub">
         <canvas id="hubCanvas" width="320" height="200" style="background:#090a10; border-radius:12px; border:1px solid #ff007a; margin-bottom:10px;"></canvas>
-```html
-    <script>
-        // 🚨 УБЕДИСЬ, ЧТО ЗДЕСЬ СТОИТ ТВОЙ АКТУАЛЬНЫЙ NGROK АДРЕС ИЗ КОНСОЛИ!
-        const API_URL = "  https://remake-nuptials-judo.ngrok-free.dev"; 
-        const tgUser = { id: 777, username: "kihotik" };
-
-        let resources = { gold: 100, crystal: 20, iron: 0 };
-        let production = { gold: 1, crystal: 0, iron: 0 };
-        let levels = { gold: 1, iron: 0 };
-        let costs = { gold: 50, iron: 100 };
-        let playerLevel = 1, playerXp = 0, armyPower = 0;
-        let playerRace = null, currentChatChannel = 'world', secondsSinceLastClaim = 0;
-        let chatHistory = { world: [], alliance: [], private: [], market: [] };
-        let ws, hubWs, myHubCoords = { x: 700, y: 600 }, remotePlayers = [];
-
-        const legendStory = [
-            "« В начале времен, когда сеть TON была лишь чистой неоновой энергией, праотцы сокрыли в недрах шести биомов Священные Кристаллы... »",
-            "« Ера пассивного покоя завершена. Кланы собирают ресурсы, древние подземелья проснулись, а Таверна Столицы наполнилась звоном клинков фракций. »",
-            "« Выберите свою расу и постройте величайшую ММО-империю Web3... »"
-        ];
-        let curPara = 0, charIdx = 0;
-
-        function startTypewriter() {
-            let container = document.getElementById('intro-text-container');
-            if(!container) return;
-            if(curPara >= legendStory.length) { document.getElementById('btn-skip-intro').style.display='block'; return; }
-            let curLine = legendStory[curPara];
-            container.innerHTML = ""; charIdx = 0;
-            function type() {
-                if(charIdx < curLine.length) { container.innerHTML += curLine.charAt(charIdx); charIdx++; setTimeout(type, 30); }
-                else { curPara++; setTimeout(startTypewriter, 2000); }
-            }
-            type();
-        }
-
-        function closeIntroAndProceed() {
-            document.getElementById('game-intro-screen').style.display = 'none';
-            document.getElementById('race-selection-screen').style.display = 'flex';
-        }
-
-        async function selectRace(raceKey) {
-            playerRace = raceKey;
-            await fetch(API_URL + "/api/choose_race", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user_id:tgUser.id, race:raceKey}) });
-            document.getElementById('race-selection-screen').style.display = 'none';
-            loadGameProgress(); initSockets();
-        }
-
-        async function loadGameProgress() {
-            try {
-                let r = await fetch(API_URL + "/api/get_profile/" + tgUser.id);
-                let d = await r.json();
-                if(!d.race) { document.getElementById('game-intro-screen').style.display='flex'; startTypewriter(); return; }
-                document.getElementById('game-intro-screen').style.display='none';
-                playerRace = d.race; resources.gold = d.gold; resources.crystal = d.crystal; resources.iron = d.iron;
-                production.gold = d.prod_gold; production.iron = d.prod_iron;
-                playerLevel = d.level; playerXp = d.xp; updateUI();
-            } catch(e) { document.getElementById('game-intro-screen').style.display='none'; }
-        }
-
-        function updateUI() {
-            document.getElementById('res-gold').innerText = Math.floor(resources.gold);
-            document.getElementById('res-crystal').innerText = Math.floor(resources.crystal);
-            document.getElementById('res-iron').innerText = Math.floor(resources.iron);
-            document.getElementById('player-level-badge').innerText = playerLevel;
-            document.getElementById('xp-text').innerText = playerXp + " / " + (playerLevel*playerLevel)*100 + " XP";
-            document.getElementById('xp-progress-bar').style.width = (playerXp/((playerLevel*playerLevel)*100))*100 + "%";
-            document.getElementById('gold-mine-visual').innerText = production.gold > 5 ? "🏭" : "🪵";
-            document.getElementById('iron-mine-visual').innerText = production.iron > 0 ? "🏭" : "❌";
-        }
-
-        document.getElementById('drill-trigger').addEventListener('click', () => {
-            resources.crystal += 1; playerXp += 2;
-            if(playerXp >= (playerLevel*playerLevel)*100) {
-                playerXp = 0; playerLevel++;
-                fetch(API_URL + "/api/player/add_xp", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user_id:tgUser.id, xp_amount:100})});
-                alert("✨ LEVEL UP! ✨");
-            }
-            updateUI();
-        });
-
-        function switchScreen(id, el) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            document.getElementById("screen-" + id).classList.add('active');
-            el.classList.add('active');
-            if(id === 'battle') setTimeout(drawDungeon, 100);
-            if(id === 'hub') setTimeout(drawHub, 100);
-        }
-
-        function upgradeBuilding(type) {
-            if(type === 'gold' && resources.crystal >= costs.gold) { resources.crystal -= costs.gold; production.gold += 2; costs.gold = Math.floor(costs.gold*1.5); }
-            else if(type==='iron' && resources.gold >= costs.iron) { resources.gold -= costs.iron; production.iron += 1; costs.iron = Math.floor(costs.iron*1.6); }
-            else { alert("Недостаточно ресурсов!"); return; }
-            updateUI();
-        }
-
-        const hubCanvas = document.getElementById('hubCanvas'), hubCtx = hubCanvas?.getContext('2d');
-        function drawHub() {
-            if(!hubCtx) return; hubCtx.clearRect(0,0,320,200);
-            let camX = Math.max(0, Math.min(1200 - 320, myHubCoords.x - 160));
-            let camY = Math.max(0, Math.min(1200 - 200, myHubCoords.y - 100));
-            for(let x=0; x<1200; x+=40) {
-                for(let y=0; y<1200; y+=40) {
-                    if(x < camX-40 || x > camX+320 || y < camY-40 || y > camY+200) continue;
-                    hubCtx.fillStyle = y < 400 ? (x < 400 ? "#1a1c24" : "#0d1f14") : (y < 800 ? "#112217" : "#2d281a");
-                    hubCtx.fillRect(x - camX, y - camY, 40, 40);
-                }
-            }
-            remotePlayers.forEach(p => {
-                let scrX = p.x - camX; let scrY = p.y - camY;
-                let bob = (p.action === "dancing") ? Math.sin(Date.now()/120)*4 : 0;
-                hubCtx.fillStyle = p.action === "dancing" ? "rgb(255,0,122)" : "#00f2fe";
-                hubCtx.fillRect(scrX, scrY + bob, 12, 12);
-                hubCtx.fillStyle = "#fff"; hubCtx.font = "8px sans-serif";
-                hubCtx.fillText("@" + p.username, scrX - 10, scrY - 4 + bob);
-            });
-        }
-
-        function moveInHub(dx, dy) {
-            if(myHubCoords.x + dx >= 0 && myHubCoords.x + dx <= 1200) myHubCoords.x += dx;
-            if(myHubCoords.y + dy >= 0 && myHubCoords.y + dy <= 1200) myHubCoords.y += dy;
-            drawHub();
-            if(hubWs && hubWs.readyState === WebSocket.OPEN) {
-                hubWs.send(JSON.stringify({ type:"move", x:myHubCoords.x, y:myHubCoords.y }));
-            }
-        }
-        function startDancingAction() {
-            if(hubWs && hubWs.readyState === WebSocket.OPEN) {
-                hubWs.send(JSON.stringify({ type:"dance" }));
-            }
-        }
-        function challengeNearestPlayer() { attackMine(); }
-
-        const dCanvas = document.getElementById('dungeonCanvas'), dCtx = dCanvas?.getContext('2d');
-        let hero = { x:20, y:20 }, mob = { x:180, y:60, alive:true };
-        function drawDungeon() {
-            if(!dCtx) return; dCtx.clearRect(0,0,300,180);
-            dCtx.fillStyle = "var(--crystal)"; dCtx.fillRect(hero.x, hero.y, 14, 14);
-            if(mob.alive) { dCtx.fillStyle = "var(--war)"; dCtx.fillRect(mob.x, mob.y, 14, 14); }
-        }
-        function moveHero(dx, dy) {
-            if(hero.x+dx >= 0 && hero.x+dx <= 280) hero.x += dx;
-            if(hero.y+dy >= 0 && hero.y+dy <= 160) hero.y += dy;
-            drawDungeon();
-        }
-        function interactAction() {
-            if(mob.alive && Math.abs(hero.x - mob.x) < 20 && Math.abs(hero.y - mob.y) < 20) {
-                mob.alive = false; resources.gold += 300;
-                document.getElementById('npc-dialogue-box').innerHTML = "🎉 <b>Победа!</b> Моб повержен, добыто +300 🪙 Золота!";
-                updateUI(); drawDungeon();
-            }
-        }
-
-        function attackMine() {
-            const overlay = document.getElementById('battle-animation-overlay');
-            const bar = document.getElementById('battle-progress-bar');
-            overlay.style.display = 'flex'; document.body.classList.add('shake-effect');
-            let p = 0;
-            let iv = setInterval(() => {
-                p += 5; bar.style.width = p + "%";
-                if(p >= 100) {
-                    clearInterval(iv); document.body.classList.remove('shake-effect'); overlay.style.display = 'none';
-                    resources.crystal += 500;
-                    alert("🔥 ПОБЕДА В ДУЭЛИ! 🔥\n\nВы успешно разбили армию врага и зачистили +500 💎 Кристаллов!");
-                    updateUI();
-                }
-            }, 150);
-        }
-
-        function changeChatChannel(ch, btn) {
-            currentChatChannel = ch; document.querySelectorAll('.chat-tab-btn').forEach(b => { b.style.background='transparent'; b.style.color='#5f6377'; });
-            btn.style.background = 'var(--crystal)'; btn.style.color = 'black';
-            renderChat();
-        }
-        function renderChat() {
-            let box = document.getElementById('chat-box'); box.innerHTML = '';
+        <div style="display:flex; gap:6px; width:100%; max-width:320px; margin-bottom:6px;">
+💃 Танец⚔️ Дуэль▲◀▶▼🌍 Мир🛡️ Клан👤 ИИ🛒 Рынок▶🌋Добыча🗺️Карта⚔️Катакомбы🍻Таверна⚔️ШТУРМ РУДНИКА...// 🚨 ВСТАВЬ СЮДА СВОЮ ТЕКУЩУЮ ССЫЛКУ NGROK ИЗ КОНСОЛИconst API_URL = "ngrok-free.dev";const tgUser = { id: 777, username: "kihotik" };let resources = { gold: 100, crystal: 20, iron: 0 };let production = { gold: 1, iron: 0 };let costs = { gold: 50, iron: 100 };let playerLevel = 1, playerXp = 0;let playerRace = null, currentChatChannel = 'world', secondsSinceLastClaim = 0;let chatHistory = { world: [], alliance: [], private: [], market: [] };let ws, hubWs, myHubCoords = { x: 700, y: 600 }, remotePlayers = [];const legendStory = ["« В начале времен, когда сеть TON была лишь чистой неоновой энергией, праотцы сокрыли в недрах шести биомов Священные Кристаллы... »","« Ера пассивного покоя завершена. Кланы собирают ресурсы, древние подземелья проснулись, а Таверна Столицы наполнилась звоном клинков фракций. »","« Выберите свою расу и постройте величайшую ММО-империю Web3... »"];let curPara = 0, charIdx = 0;function startTypewriter() {let container = document.getElementById('intro-text-container');if(!container) return;if(curPara >= legendStory.length) { document.getElementById('btn-skip-intro').style.display='block'; return; }let curLine = legendStory[curPara];container.innerHTML = ""; charIdx = 0;function type() {if(charIdx < curLine.length) { container.innerHTML += curLine.charAt(charIdx); charIdx++; setTimeout(type, 30); }else { curPara++; setTimeout(startTypewriter, 2000); }}type();}function closeIntroAndProceed() {document.getElementById('game-intro-screen').style.display = 'none';document.getElementById('race-selection-screen').style.display = 'flex';}async function selectRace(raceKey) {playerRace = raceKey;await fetch(API_URL + "/api/choose_race", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user_id:tgUser.id, race:raceKey}) });document.getElementById('race-selection-screen').style.display = 'none';loadGameProgress(); initSockets();}async function loadGameProgress() {try {let r = await fetch(API_URL + "/api/get_profile/" + tgUser.id);let d = await r.json();if(!d.race) { document.getElementById('game-intro-screen').style.display='flex'; startTypewriter(); return; }document.getElementById('game-intro-screen').style.display='none';playerRace = d.race; resources.gold = d.gold; resources.crystal = d.crystal; resources.iron = d.iron;production.gold = d.prod_gold; production.iron = d.prod_iron;playerLevel = d.level; playerXp = d.xp; updateUI();} catch(e) { document.getElementById('game-intro-screen').style.display='none'; }}function updateUI() {document.getElementById('res-gold').innerText = Math.floor(resources.gold);document.getElementById('res-crystal').innerText = Math.floor(resources.crystal);document.getElementById('res-iron').innerText = Math.floor(resources.iron);document.getElementById('player-level-badge').innerText = playerLevel;document.getElementById('xp-text').innerText = playerXp + " / " + (playerLevel*playerLevel)100 + " XP";document.getElementById('xp-progress-bar').style.width = (playerXp/((playerLevelplayerLevel)*100))*100 + "%";document.getElementById('gold-mine-visual').innerText = production.gold > 5 ? "🏭" : "🪵";document.getElementById('iron-mine-visual').innerText = production.iron > 0 ? "🏭" : "❌";}document.getElementById('drill-trigger').addEventListener('click', () => {resources.crystal += 1; playerXp += 2;if(playerXp >= (playerLevel*playerLevel)*100) {playerXp = 0; playerLevel++;fetch(API_URL + "/api/player/add_xp", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user_id:tgUser.id, xp_amount:100})});alert("✨ LEVEL UP! ✨");}updateUI();});function switchScreen(id, el) {document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));document.getElementById("screen-" + id).classList.add('active');if(el) el.classList.add('active');if(id === 'battle') setTimeout(drawDungeon, 100);if(id === 'hub') setTimeout(drawHub, 100);}function upgradeBuilding(type) {if(type === 'gold' && resources.crystal >= costs.gold) { resources.crystal -= costs.gold; production.gold += 2; costs.gold = Math.floor(costs.gold1.5); }else if(type==='iron' && resources.gold >= costs.iron) { resources.gold -= costs.iron; production.iron += 1; costs.iron = Math.floor(costs.iron1.6); }else { alert("Недостаточно ресурсов!"); return; }updateUI();}const hubCanvas = document.getElementById('hubCanvas'), hubCtx = hubCanvas?.getContext('2d');function drawHub() {if(!hubCtx) return; hubCtx.clearRect(0,0,320,200);let camX = Math.max(0, Math.min(1200 - 320, myHubCoords.x - 160));let camY = Math.max(0, Math.min(1200 - 200, myHubCoords.y - 100));for(let x=0; x<1200; x+=40) {for(let y=0; y<1200; y+=40) {if(x < camX-40 || x > camX+320 || y < camY-40 || y > camY+200) continue;hubCtx.fillStyle = y < 400 ? (x < 400 ? "#1a1c24" : "#0d1f14") : (y < 800 ? "#112217" : "#2d281a");hubCtx.fillRect(x - camX, y - camY, 40, 40);}}remotePlayers.forEach(p => {let scrX = p.x - camX; let scrY = p.y - camY;let bob = (p.action === "dancing") ? Math.sin(Date.now()/120)*4 : 0;hubCtx.fillStyle = p.action === "dancing" ? "rgb(255,0,122)" : "#00f2fe";hubCtx.fillRect(scrX, scrY + bob, 12, 12);hubCtx.fillStyle = "#fff"; hubCtx.font = "8px sans-serif";hubCtx.fillText("@" + p.username, scrX - 10, scrY - 4 + bob);});}function moveInHub(dx, dy) {if(myHubCoords.x + dx >= 0 && myHubCoords.x + dx <= 1200) myHubCoords.x += dx;if(myHubCoords.y + dy >= 0 && myHubCoords.y + dy <= 1200) myHubCoords.y += dy;drawHub();if(hubWs && hubWs.readyState === WebSocket.OPEN) {hubWs.send(JSON.stringify({ type:"move", x:myHubCoords.x, y:myHubCoords.y }));}}function startDancingAction() {if(hubWs && hubWs.readyState === WebSocket.OPEN) {hubWs.send(JSON.stringify({ type:"dance" }));}}function challengeNearestPlayer() { attackMine(); }const dCanvas = document.getElementById('dungeonCanvas'), dCtx = dCanvas?.getContext('2d');let hero = { x:20, y:20 }, mob = { x:180, y:60, alive:true };function drawDungeon() {if(!dCtx) return; dCtx.clearRect(0,0,300,180);dCtx.fillStyle = "var(--crystal)"; dCtx.fillRect(hero.x, hero.y, 14, 14);if(mob.alive) { dCtx.fillStyle = "var(--war)"; dCtx.fillRect(mob.x, mob.y, 14, 14); }}function moveHero(dx, dy) {if(hero.x+dx >= 0 && hero.x+dx <= 280) hero.x += dx;if(hero.y+dy >= 0 && hero.y+dy <= 160) hero.y += dy;drawDungeon();}function interactAction() {if(mob.alive && Math.abs(hero.x - mob.x) < 20 && Math.abs(hero.y - mob.y) < 20) {mob.alive = false; resources.gold += 300;document.getElementById('npc-dialogue-box').innerHTML = "🎉 Победа! Моб повержен, добыто +300 🪙 Золота!";updateUI(); drawDungeon();}}function attackMine() {const overlay = document.getElementById('battle-animation-overlay');const bar = document.getElementById('battle-progress-bar');overlay.style.display = 'flex'; document.body.classList.add('shake-effect');let p = 0;let iv = setInterval(function() {p += 5; bar.style.width = p + "%";if(p >= 100) {clearInterval(iv); document.body.classList.remove('shake-effect'); overlay.style.display = 'none';resources.crystal += 500;alert("🔥 ПОБЕДА В ДУЭЛИ! 🔥\n\nВы успешно разбили армию врага и получили +500 💎 Кристаллов!");updateUI();}}, 150);}function changeChatChannel(ch, btn) {currentChatChannel = ch; document.querySelectorAll('.chat-tab-btn').forEach(b => { b.style.background='transparent'; b.style.color='#5f6377'; });btn.style.background = 'var(--crystal)'; btn.style.color = 'black';renderChat();}function renderChat() {let box = document.getElementById('chat-box'); box.innerHTML = '';if(!chatHistory[currentChatChannel]) return;chatHistory[currentChatChannel].forEach(m => {box.innerHTML += "@" + m.sender + ": " + m.text + "";});box.scrollTop = box.scrollHeight;}async function sendChatMessage() {let input = document.getElementById('chat-input'); let t = input.value.trim(); if(!t) return;if(currentChatChannel === 'private') {chatHistory.private.push({ sender:tgUser.username, text:t }); renderChat(); input.value = '';let r = await fetch(API_URL + "/api/ai/chat?user_id=" + tgUser.id + "&user_message=" + encodeURIComponent(t), {method:"POST"});let d = await r.json(); chatHistory.private.push({ sender:d.sender, text:d.text }); renderChat();return;}if(ws && ws.readyState === WebSocket.OPEN) {ws.send(JSON.stringify({ channel:currentChatChannel, text:t })); input.value = '';}}function initSockets() {let wsUrl = API_URL.replace("https://", "wss://").replace("http://", "ws://");ws = new WebSocket(wsUrl + "/ws/chat");ws.onopen = function() { ws.send(JSON.stringify({ user_id:tgUser.id, username:tgUser.username })); };ws.onmessage = function(e) { let p = JSON.parse(e.data); if(chatHistory[p.channel]) { chatHistory[p.channel].push(p); if(currentChatChannel===p.channel) renderChat(); } };hubWs = new WebSocket(wsUrl + "/ws/mmo_hub");hubWs.onopen = function() { hubWs.send(JSON.stringify({ type:"init", user_id:tgUser.id, username:tgUser.username, race:playerRace })); };hubWs.onmessage = function(e) { let p = JSON.parse(e.data); if(p.type=='sync') { remotePlayers = p.players; drawHub(); } };}function claimStorageResources() { secondsSinceLastClaim=0; resources.gold+=250; updateUI(); }setInterval(function() { if(secondsSinceLastClaim < 100) { secondsSinceLastClaim += 5; document.getElementById('storage-bar').style.width = secondsSinceLastClaim + "%"; document.getElementById('storage-timer').innerText = secondsSinceLastClaim + "%"; } }, 1000);loadGameProgress();if(playerRace) initSockets();
