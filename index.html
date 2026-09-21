@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -33,7 +35,7 @@
         <button id="btn-skip-intro" style="display:none;" class="upgrade-btn" onclick="closeIntroAndProceed()">Принять вызов ⚔️</button>
     </div>
 
-    <!-- ВЫВЕСКА ВЫБОРА РАСЫ -->
+    <!-- ОВЕРЛЕЙ ВЫБОРА РАСЫ -->
     <div id="race-selection-screen" style="position: fixed; top:0; left:0; width:100%; height:100%; background:#07080c; z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
         <h2 style="margin-bottom:20px;">Выберите Расу</h2>
         <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; width:100%; max-width:360px;">
@@ -134,7 +136,7 @@
 ШТУРМ РУДНИКА...
 
 const tgUser = { id: 777, username: "kihotik" };
-// Автономное сохранение Web3-прогресса в локальную память телефона
+// Загрузка Web3-прогресса напрямую из памяти телефона
 let resources = JSON.parse(localStorage.getItem('overlords_resources')) || { gold: 100, crystal: 20, iron: 0 };
 let production = JSON.parse(localStorage.getItem('overlords_production')) || { gold: 1, iron: 0 };
 let costs = JSON.parse(localStorage.getItem('overlords_costs')) || { gold: 50, iron: 100 };
@@ -313,7 +315,7 @@ return;
 chatHistory[currentChatChannel].push({ sender: tgUser.username, text: t });
 renderChat(); input.value = '';
 }
-function claimStorageResources() { secondsSinceLastClaim=0; resources.gold+=250; saveGame(); updateUI(); }
+function claimStorageResources() { secondsSinceLastClaim = 0; resources.gold += 250; saveGame(); updateUI(); }
 setInterval(function() {
 if(secondsSinceLastClaim < 100) {
 secondsSinceLastClaim += 5;
@@ -322,10 +324,6 @@ document.getElementById('storage-timer').innerText = secondsSinceLastClaim + "%"
 }
 }, 1000);
 loadGameProgress();
-
-
-
----
 
 
 
